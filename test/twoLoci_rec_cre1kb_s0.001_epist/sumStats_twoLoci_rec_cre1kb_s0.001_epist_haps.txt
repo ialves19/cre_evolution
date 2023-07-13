@@ -1,0 +1,2 @@
+avePerHap_nbMut2_ontoM3haps	avePerHap_nbMut2_ontoNOM3haps	NbHaps_w_m3_w_m2	NbHaps_w_m3_wo_m2	NbHaps_wo_m3_w_m2	NbHaps_wo_m3_wo_m2	Odds_m3_m2	p-value_m3_m2	avePerHap_nbMut1_ontoM3haps	avePerHap_nbMut1_ontoNOM3haps	NbHaps_w_m3_w_m1	NbHaps_w_m3_wo_m1	NbHaps_wo_m3_w_m1	NbHaps_wo_m3_wo_m1	Odds_m3_m1	p-value_m3_m1
+26	26.2074148296593	4	0	1996	0	0	1	13.5	13.4108216432866	4	0	1996	0	0	1

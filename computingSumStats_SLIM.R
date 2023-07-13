@@ -117,7 +117,7 @@ computing_Pi <- function(haps_m, haps_frq_v, ps) {
       pi_tmp[h1, h2] <- haps_frq_v[h1]*haps_frq_v[h2]*dissimilarity.matrix[h1,h2]
     }
   }
-  pi <- (ps/(ps-1))*2*sum(apply(pi_tmp, 1, sum, na.rm=T))
+  pi <- ((ps*2)/((ps*2)-1))*2*sum(apply(pi_tmp, 1, sum, na.rm=T))
   return(pi)
 }  
 ##--------------------
@@ -150,6 +150,59 @@ nb_mX_onto_m3_background <- function(genomes, haps_w_mX, haps_w_m3, muType) {
            length(nb_haps_wo_m3_wo_m2)))
 }
 
+# get allele counts from the mutation table 
+alleleCounts <- function(mutType) {
+  
+  x <- as.numeric(unlist(cleanSegSitesTable %>% filter(V3 == mutType)  %>% select(V9)))
+  
+  return(x)
+}
+# get allele physical positions from the mutation table 
+MutPositions <- function(mutType) {
+  
+  x <- as.numeric(unlist(cleanSegSitesTable %>% filter(V3 == mutType)  %>% select(V4)))
+  
+  return(x)
+}
+
+# Compute LD statistics for each pairwise combination of CREalleles and CS (mut2) alleles
+computing_LD <- function(PhyPosCREallele) {
+  
+  #PhyPosCREallele <- 100552
+  for(i in CS_delSites) {
+    
+    #i <- 47226
+    df.tmp <- df_genomes %>% select(colnames(df_genomes)[colnames(df_genomes) %in% c(paste0("X",PhyPosCREallele), paste0("X",i))])
+    countHapsLD <- df.tmp %>% group_by_all %>% count
+    
+    mObsFreq <- matrix(rep(0,4), ncol = 2)
+    colnames(mObsFreq) <- c("A", "m3")
+    rownames(mObsFreq) <- c("A", "m2")
+    mObsFreq[1,1] <- as.numeric(countHapsLD[which(countHapsLD[,1] == "A" & countHapsLD[,2] == "A"),3]/(popSize*2))
+    mObsFreq[1,2] <- as.numeric(countHapsLD[which(countHapsLD[,1] == "A" & countHapsLD[,2] == "m3"),3]/(popSize*2))
+    mObsFreq[2,1] <- as.numeric(countHapsLD[which(countHapsLD[,1] == "m2" & countHapsLD[,2] == "A"),3]/(popSize*2))
+    mObsFreq[2,2] <- as.numeric(countHapsLD[which(countHapsLD[,1] == "m2" & countHapsLD[,2] == "m3"),3]/(popSize*2))
+    
+    mExpFreqIndep <- matrix(rep(0,4), ncol = 2)
+    colnames(mExpFreqIndep) <- c("A", "m3")
+    rownames(mExpFreqIndep) <- c("A", "m2")
+    freqM3 <- as.numeric(cleanSegSitesTable %>% filter(V4 == PhyPosCREallele) %>% select(V9))/(popSize*2)
+    freqM2 <- as.numeric(cleanSegSitesTable %>% filter(V4 == i) %>% select(V9))/(popSize*2)
+    
+    mExpFreqIndep[1,1] <- (1-freqM2)*(1-freqM3)
+    mExpFreqIndep[1,2] <- (1-freqM2)*(freqM3)
+    mExpFreqIndep[2,1] <- (freqM2)*(1-freqM3)
+    mExpFreqIndep[2,2] <- (freqM2)*(freqM3)
+    
+    #mExpFreqIndep
+    mObsFreq[is.na(mObsFreq)] <- 0
+    XiSqPvalue <- chisq.test(mObsFreq*(popSize*2), mExpFreqIndep*(popSize*2))$p.value
+    D <- mObsFreq[1,1]*mObsFreq[2,2]-mObsFreq[1,2]*mObsFreq[2,1]
+    rSq <- D^2/((1-freqM2)*freqM2*(1-freqM3)*freqM3)
+    cat(paste(PhyPosCREallele, i,D, rSq, XiSqPvalue, sep = "\t"), sep = "\n", file = sumStats_LD_fName, append = T)
+    
+  }
+}
 #############################
 ################-- End of functions
 ######
@@ -162,6 +215,9 @@ library(tidyverse, lib.loc = "/home/ialves/R/x86_64-pc-linux-gnu-library/4.1")
 wrkDir <- args[1]
 sceName <- args[2]
 setwd(paste0(wrkDir, "/", sceName))
+
+wrkDir <- "/Users/isabel/Dropbox/UnivSTRASBOURG/CRE_evolution/02-Scripts/test/twoLoci_rec_cre1kb_s0.001_epist"
+sceName <- "twoLoci_rec_cre1kb_s0.001_epist"
 
 # examples : c("twoLoci_rec_cre100kb_s0.001","twoLoci_rec_cre100kb_s0.001_epist", "twoLoci_rec_cre100kb_s0.0425", "twoLoci_rec_cre100kb_s0.0425_epist","twoLoci_rec_cre100kb_s0.1", "twoLoci_rec_cre100kb_s0.1_epist", "twoLoci_rec_cre100kb_s0.3", "twoLoci_rec_cre100kb_s0.3_epist")
 #scenario name
@@ -178,23 +234,46 @@ popSize <- 1000
 # popSize <- 1000 
 # simID <- 98
 
+#test pi ans S computation
+# set.seed(189989)
+# seqTest <- sample(c("A","T", "G", "C"), 50, replace = T)
+# df_seq <- data.frame(rbind(seqTest,seqTest,seqTest,seqTest,seqTest,seqTest,seqTest,
+#                            seqTest,seqTest,seqTest))
+# df_seq[c(2,5,6,9),4] <- "G"
+# df_seq[c(7),17] <- "T"
+# df_seq[c(2,4,5,6,7,8,9,10),44] <- "A"
+# df_seq[c(4,8),50] <- "C"
+# 
+# test_uniqHaps <- df_seq %>% group_by_all %>% count
+# test_HapFreq <- test_uniqHaps$n/sum(test_uniqHaps$n)
+# pitest <- computing_Pi(test_uniqHaps[,-ncol(test_uniqHaps)], test_HapFreq, 10)
+# segTest <- 4/sum(1/rep(1:(10-1)))
+
+
 #creating output files with headers
 sumStats_perSite_fName <- paste0("sumStats_", sceName, "_perSite.txt")
 sumStats_pi_fName <- paste0("pi_", sceName, ".txt")
 sumStats_haps_fName <- paste0("sumStats_", sceName, "_haps.txt")
+sumStats_LD_fName <- paste0("sumStats__", sceName, "_LD.txt")
 
 cat(paste("Nb_m1", "Nb_m2", "Nb_m3", "AveHet", "AveHet_m1", "AveHet_m2", "AveHet_m3", sep = "\t"), sep = "\n", file = sumStats_perSite_fName)
-cat("Nucleotide_diversity", sep = "\n", file = sumStats_pi_fName)
+cat(paste("Overall_Nucleotide_diversity", "CS_Nucleotide_diversity", "CRE_Nucleotide_diversity", 
+          "Overall_SegSites", "Overall_ThetaS", "CS_SegSites", "CS_ThetaS", 
+          "CRE_SegSites", "CRE_ThetaS", "OverallTajimasD", "TajimasDCS", "TajimasDCRE", sep = "\t"), sep = "\n", file = sumStats_pi_fName)
 cat(paste("avePerHap_nbMut2_ontoM3haps", "avePerHap_nbMut2_ontoNOM3haps", 
           "NbHaps_w_m3_w_m2", "NbHaps_w_m3_wo_m2", "NbHaps_wo_m3_w_m2", "NbHaps_wo_m3_wo_m2", "Odds_m3_m2","p-value_m3_m2",
           "avePerHap_nbMut1_ontoM3haps", "avePerHap_nbMut1_ontoNOM3haps",
           "NbHaps_w_m3_w_m1", "NbHaps_w_m3_wo_m1", "NbHaps_wo_m3_w_m1", "NbHaps_wo_m3_wo_m1", "Odds_m3_m1","p-value_m3_m1", sep = "\t"), 
     sep = "\n", file = sumStats_haps_fName)
 
+cat(paste("CREPosition", "CSPosition", "D", "Rsquared", "Pvalue-ChiSqTest", sep = "\t"), 
+    sep = "\n", file = sumStats_LD_fName)
+
 #mean_nb_mut2_ontoM3haps", "mean_nb_mut2_ontoNoM3haps", "nb_hap_w_m3_w_m2",
 #"nb_hap_w_m3_wo_m2","nb_hap_wo_m3_w_m2","nb_hap_wo_m3_wo_m2"
 for(simID in 1:nbOfSims) {
 
+  simID <- 10
   #open the mutation section of SLIM's output
   #twoLoci_rec5kb_cre1kb_s-0.001_epist_54_g10000.segMutations 
   #setwd(paste0(wrkDir, "/sims/", sceName))
@@ -206,6 +285,7 @@ for(simID in 1:nbOfSims) {
   # These sites are excluded from all the following analysis 
   cleanSegSitesTable <- detectMultiallelicSites(segSitesTable, TRUE)
   #dim(cleanSegSitesTable)
+  nbOfMultiallelicSites <- nrow(segSitesTable)-nrow(cleanSegSitesTable)
   rm(segSitesTable)
   
   #heterozygosity 
@@ -220,7 +300,6 @@ for(simID in 1:nbOfSims) {
   # reading the genomes 
   genMatrix <- getGenomesFromSLIMoutput(sceName, simID, genNb, popSize)
   #dim(genMatrix)
-  
   df_genomes <- data.frame(genMatrix)
   #retireving unique haplotypes 
   uniq_haps <- df_genomes %>% group_by_all %>% count
@@ -228,7 +307,63 @@ for(simID in 1:nbOfSims) {
   haps_freq <- uniq_haps$n/sum(uniq_haps$n)
   #computing pi
   nucleotideDiv <- computing_Pi(uniq_haps[,-ncol(uniq_haps)], haps_freq, popSize)
-  cat(nucleotideDiv, sep = "\n", file = sumStats_pi_fName, append = T)
+  # computing Theta S
+  thetaS <- nrow(cleanSegSitesTable)/sum(1/rep(1:((popSize*2)-1)))
+  
+  ### Within CRE and CS 
+  #computing pi 
+  nbofM3Mut <- nrow(cleanSegSitesTable %>% filter(V3 == "m3"))
+  if(nbofM3Mut > 0 ) {
+    
+    CREsites <- MutPositions("m3")
+    CREgenoMatrix <- df_genomes %>% select(colnames(df_genomes)[colnames(df_genomes) %in% paste0("X",CREsites)])
+    CSgenoMatrix <- df_genomes %>% select(colnames(df_genomes)[!colnames(df_genomes) %in% paste0("X",CREsites)])
+    uniqHapsCRE <- CREgenoMatrix %>% group_by_all %>% count
+    uniqHapsCS <- CSgenoMatrix %>% group_by_all %>% count
+    hapsFreqCRE <- uniqHapsCRE$n/sum(uniqHapsCRE$n)
+    hapsFreqCS <- uniqHapsCS$n/sum(uniqHapsCS$n)
+    
+    piCRE <- computing_Pi(uniqHapsCRE[,-ncol(uniqHapsCRE)], hapsFreqCRE, popSize)
+    piCS <- computing_Pi(uniqHapsCS[,-ncol(uniqHapsCS)], hapsFreqCS, popSize)
+    
+  } else {
+    CSgenoMatrix <- df_genomes 
+    uniqHapsCS <- CSgenoMatrix %>% group_by_all %>% count
+    hapsFreqCS <- uniqHapsCS$n/sum(uniqHapsCS$n)
+    # popSize here is in nb of diploid individuals
+    piCS <- computing_Pi(uniqHapsCS[,-ncol(uniqHapsCS)], hapsFreqCS, popSize)
+    piCRE <- 0
+    
+  }
+
+  #computing S 
+  CRESegSites <- nrow(cleanSegSitesTable %>% filter(V3 == "m3"))
+  CREThetaSegSites <- CRESegSites/sum(1/rep(1:((popSize*2)-1)))
+  CSSegSites <- nrow(cleanSegSitesTable %>% filter(V3 == "m1" | V3 == "m2"))
+  CSThetaSegSites <- CSSegSites/sum(1/rep(1:((popSize*2)-1)))
+  
+  #computing Tajimas'D 
+  tajDCRE <- piCRE - CREThetaSegSites
+  tajDCS <- piCS - CSThetaSegSites
+  ### ------------
+  overTajimasD <- nucleotideDiv - thetaS
+  cat(paste(nucleotideDiv, piCS, piCRE, nrow(cleanSegSitesTable), thetaS, CSSegSites, CSThetaSegSites,
+            CRESegSites, CREThetaSegSites, overTajimasD, tajDCS, tajDCRE, sep = "\t"), sep = "\n", file = sumStats_pi_fName, append = T)
+  
+  # computing linkage disequilibrium 
+  if(nbofM3Mut > 0) {
+    
+    CREsites <- MutPositions("m3")
+    #freqCREsites <- alleleCounts("m3")
+    
+    CS_delSites <- MutPositions("m2")
+    #freqCS_delSites <- alleleCounts("m2")
+    
+    sapply(CREsites, computing_LD)
+
+  } else {
+    cat("No variable sites in the CRE. NO LD computation was done.")
+  }
   
   #computing the number of mut of type X per haplotype
   nb_m3_per_hap <- computing_nb_mutX_per_haplotype(df_genomes, "m3")

@@ -1,0 +1,43 @@
+// set up a simple simulation with neutral and slightly deleterious variants
+     initialize()
+     {
+         // set the overall mutation rate
+         initializeMutationRate(1.25e-7);
+         // m1 mutation type: neutral
+         initializeMutationType("m1", 0.5, "f", 0.0);
+		 // m2 mutation type: slightly deleterious
+		 initializeMutationType("m2", 0.5, "f", -0.001);
+         // initialize mutation type for the CRE 
+         initializeMutationType("m3", 0.5, "f", 0.0);
+         // g1 genomic element type: uses m1 for all mutations
+         initializeGenomicElementType("g1", c(m1,m2), c(1,4));
+         initializeGenomicElementType("g2", m3, 1);
+         // uniform chromosome of length 100 kb
+         initializeGenomicElement(g1, 0, 99999);
+         initializeGenomicElement(g2, 100500, 101499);
+         // uniform recombination along the chromosome
+         initializeRecombinationRate(1.25e-7);
+     }
+     // create a population of 500 individuals
+1 early() {
+         defineConstant("simID", getSeed());
+         sim.addSubpop("p1", 1000);
+     }
+// run to tick 10000
+10000 late() { sim.outputFull(); }
+10000 late() { sim.outputFixedMutations(); }
+    // output
+10001 early() { sim.simulationFinished(); }
+mutationEffect(m2) {
+    if (homozygous)
+        return 1.0 + mut.selectionCoeff;
+    else
+        if (individual.genome1.countOfMutationsOfType(m3))
+            return 1.0 + (mut.mutationType.dominanceCoeff + (mut.mutationType.dominanceCoeff * 0.20)) * mut.selectionCoeff;
+        else if (individual.genome2.countOfMutationsOfType(m3))
+            return 1.0 + (mut.mutationType.dominanceCoeff + (mut.mutationType.dominanceCoeff * 0.20)) * mut.selectionCoeff;
+        else
+            return 1.0 + (mut.mutationType.dominanceCoeff - (mut.mutationType.dominanceCoeff * 0.20)) * mut.selectionCoeff;
+}
+
+
