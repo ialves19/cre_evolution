@@ -7,33 +7,49 @@
 #SBATCH -o slim.%N.%j.out.log      # File to which STDOUT will be written
 #SBATCH -e slim.%N.%j.err.log      # File to which STDERR will be written
 
-wrkDir="/home/ialves/SLiM"
+##################
+##
+## This script should be run like:
+## batch ollecting_segre_and_fixedMutations_2.bash "twoLoci_rec0.5kb_cre1kb_s-0.0425_epist" 10000
+##
+## by Isabel Alves - Feb 2025
+##
+##################
+
+
+
+wrkDir="/shared/home/ialves/CRE_evolution/SLiM"
 
 cd $wrkDir
+#model
 m=$1
+#generation
 g=$2
 
 echo "Collecting model: $m"
 echo "Collecting generation: $g"
 
-cd sims/$m/
+cd sims_Feb2025/$m/
 #going over the replicates
-for k in {1..25}; do
+for k in {1..100}; do
     
-    csplit -z ${m}_${k}.out /OUT/ '{*}'
-    mv xx$g ${m}_${k}_g${g}.out
-
+    csplit -z ${m}_${k}.out /'#OUT: 10000 10000'/ '{*}'
+    mv xx01 ${m}_${k}_g${g}.segMut
+    mv xx02 ${m}_${k}_g${g}.fixedMutations
+    rm -f xx*
+ 
     mkdir ${m}_${k}_g${g}_tmp
-    csplit -z --prefix ${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_ ${m}_${k}_g$g.out /Genomes/ '{*}'
+    csplit -z --prefix ${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_ ${m}_${k}_g${g}.segMut /Genomes/ '{*}'
 
     if [ -f "${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_00" ] && [ -f "${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_01" ]; 
     then
-        mv ${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_00 ${m}_${k}_g$g.mutations
+        mv ${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_00 ${m}_${k}_g$g.segMutations
         mv ${m}_${k}_g${g}_tmp/${m}_${k}_g${g}_01 ${m}_${k}_g$g.genomes
 
     else
         echo "ERROR: no file found." 1>&2
     fi
-    rm -f xx*
+    rm -f ${m}_${k}_g${g}.segMut
 done
 rm -rf *_tmp/
+cd 

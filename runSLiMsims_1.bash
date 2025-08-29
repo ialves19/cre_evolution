@@ -7,21 +7,21 @@
 #SBATCH -o slim.%N.%j.out.log      # File to which STDOUT will be written
 #SBATCH -e slim.%N.%j.err.log      # File to which STDERR will be written
 
-wrkDir="/home/ialves/SLiM"
+wrkDir="/shared/home/ialves/CRE_evolution/SLiM"
+outputDir="/shared/home/ialves/CRE_evolution/SLiM/sims_Feb2025"
 
 cd $wrkDir
-echo "$1"
+echo "$1 replicate nb: $2"
 
-cd sims/$1/
-for k in {1..25}; do
-    csplit -z ${1}_${k}.out /OUT/ '{*}'
-    if [ -f "xx4999" ]; 
-    then
-        grep m1 xx4999 > ${1}_${k}_m1_xx4999.frq
-        grep m2 xx4999 > ${1}_${k}_m2_xx4999.frq
-        grep m3 xx4999 > ${1}_${k}_m3_xx4999.frq
-    else
-        echo "ERROR: no file found." 1>&2
-    fi
-    rm -f xx*
-done
+if [ ! -d $outputDir/$1 ]; 
+then
+mkdir $outputDir/$1
+#mv $outputDir/${1}_${2}.out $outputDir/$1
+#else 
+#mv $outputDir/${1}_${2}.out $outputDir/$1
+fi 
+
+##provide the name without ext
+./slim $outputDir/Models/$1.txt > $outputDir/$1/${1}_${2}.out 
+
+

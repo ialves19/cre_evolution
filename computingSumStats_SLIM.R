@@ -12,9 +12,9 @@
 
 
 args = commandArgs(trailingOnly=TRUE)
-library(ggplot2, lib.loc = "/home/ialves/R/x86_64-pc-linux-gnu-library/4.1")
-library(tidyverse, lib.loc = "/home/ialves/R/x86_64-pc-linux-gnu-library/4.1")
-source(../sumStats_functions.R)
+library(ggplot2, lib.loc = "/shared/home/ialves/R/x86_64-redhat-linux-gnu-library/4.3")
+library(tidyverse, lib.loc = "/shared/home/ialves/R/x86_64-redhat-linux-gnu-library/4.3")
+source("/shared/home/ialves/CRE_evolution/SLiM/sumStats_functions.R")
 
 wrkDir <- args[1]
 sceName <- args[2]
